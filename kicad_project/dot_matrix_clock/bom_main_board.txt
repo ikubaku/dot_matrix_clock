@@ -1,0 +1,27 @@
+== In stock
+Grove BME280
+Grove cable
+header 1x6: ICSP
+header 1x2: PROG
+header 1x7: CCS811
+0.1uF
+10kR
+100R
+Tactile switch
+
+== Needed
+socket 1x8
+socket 2x10
+socket 1x7: CCS811
+socket 2x20
+socket 2x6(1x6 x2): 
+PYNQ Grove Adapter
+IC socket 28
+PIC18F25Q10
+SDHC Memory Card
+Real time clock
+IC socket 8
+Super capacitor 1F 5.5V
+Prototyping board(140x40; 0.1in.): Main board
+Raspberry Pi Zero WH
+CCS811 module

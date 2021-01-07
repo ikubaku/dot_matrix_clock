@@ -1,0 +1,18 @@
+== In stock
+Short jumper
+0.1uF x4
+128x64 OLED Display
+
+== Needed
+IC socket 16 x3
+IC socket 18
+socket 1x4: OLED display
+header 1x8: Connection to the main board
+header 2x10: Connection to the main board
+500R x22
+74HC595 x3
+ULN2803A
+MOA20UB019GJ x4
+Blue LED x2
+NeoPixel dot module x5
+Prototyping board(140x40; 0.1in.): Display Unit

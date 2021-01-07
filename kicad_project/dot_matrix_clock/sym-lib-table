@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name PIC)(type Legacy)(uri /home/ikubaku/tools/Assets/kicad-libraries/PIC.lib)(options "")(descr ""))
+  (lib (name dot_matrix)(type Legacy)(uri ${KIPRJMOD}/dot_matrix.lib)(options "")(descr ""))
+)
