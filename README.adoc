@@ -1,0 +1,10 @@
+= dot_matrix_clock
+
+A Raspberry Pi powered desktop clock with environment monitoring.
+
+== License
+The firmware source code is licensed under The MIT License unless explicitly specified in the source files (such as MCC generated sources).
+
+The hardware schematics is licensed under The Creative Commons Attribution-ShareAlike 4.0 International license.
+
+See `LICENSE.firmware` and `LICENSE.schematics` for the full text of the licenses.
