@@ -16,28 +16,80 @@
 psect   neopixel_driver,local,class=CODE,reloc=2 ; PIC18
 
 global _g_cnt_bit, _g_cnt_uwait
+//global _g_npx_0_r, g_npx_0_g, g_npx_0_b
+//global _g_npx_1_r, g_npx_1_g, g_npx_1_b
+//global _g_npx_2_r, g_npx_2_g, g_npx_2_b
+//global _g_npx_3_r, g_npx_3_g, g_npx_3_b
+//global _g_npx_4_r, g_npx_4_g, g_npx_4_b
 
 global _write_neopixel ; extern of bar function goes in the C source file
 _write_neopixel:
-    MOVLW 24
+    // Green channel
+    MOVLW 8
     MOVWF _g_cnt_bit, F
-    bit_start:
-	; Send 24bits of mark signal
+    bit_start_g:
+	; Send 8bits of unmark signal
 	; 0.8us of H and 0.4us of L
 	BSF PORTC, 0
 	MOVLW 5
 	MOVWF _g_cnt_uwait, F
-	wait_h_start:
+	wait_h_start_g:
 	    NOP
 	    DECFSZ _g_cnt_uwait, F
-	    GOTO wait_h_start
+	    GOTO wait_h_start_g
 	BCF PORTC, 0
-	MOVLW 2
+	MOVLW 1
 	MOVWF _g_cnt_uwait, F
-	wait_l_start:
+	wait_l_start_g:
 	    NOP
 	    DECFSZ _g_cnt_uwait, F
-	    GOTO wait_l_start
+	    GOTO wait_l_start_g
 	DECFSZ _g_cnt_bit, F
-	GOTO bit_start
+	GOTO bit_start_g
+
+    // Red channel
+    MOVLW 8
+    MOVWF _g_cnt_bit, F
+    bit_start_r:
+	; Send 8bits of unmark signal
+	; 0.8us of H and 0.4us of L
+	BSF PORTC, 0
+	MOVLW 1
+	MOVWF _g_cnt_uwait, F
+	wait_h_start_r:
+	    NOP
+	    DECFSZ _g_cnt_uwait, F
+	    GOTO wait_h_start_r
+	BCF PORTC, 0
+	MOVLW 5
+	MOVWF _g_cnt_uwait, F
+	wait_l_start_r:
+	    NOP
+	    DECFSZ _g_cnt_uwait, F
+	    GOTO wait_l_start_r
+	DECFSZ _g_cnt_bit, F
+	GOTO bit_start_r
+
+    // Blue channel
+    MOVLW 8
+    MOVWF _g_cnt_bit, F
+    bit_start_b:
+	; Send 8bits of mark signal
+	; 0.8us of H and 0.4us of L
+	BSF PORTC, 0
+	MOVLW 1
+	MOVWF _g_cnt_uwait, F
+	wait_h_start_b:
+	    NOP
+	    DECFSZ _g_cnt_uwait, F
+	    GOTO wait_h_start_b
+	BCF PORTC, 0
+	MOVLW 5
+	MOVWF _g_cnt_uwait, F
+	wait_l_start_b:
+	    NOP
+	    DECFSZ _g_cnt_uwait, F
+	    GOTO wait_l_start_b
+	DECFSZ _g_cnt_bit, F
+	GOTO bit_start_b
     RETURN

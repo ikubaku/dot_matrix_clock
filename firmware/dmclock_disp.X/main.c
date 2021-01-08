@@ -61,6 +61,7 @@ struct DisplayState
     uint8_t pos_y_c;
     uint8_t is_dot_active;
     uint8_t vram[MATRIX_WIDTH];    // The bit[n] stores ROWn pixel.
+    uint8_t npxram[5][3];
 };
 
 struct CommandState
@@ -81,6 +82,24 @@ uint8_t g_is_command_ready;
 // Working memory for the assembly functions
 volatile uint8_t g_cnt_bit;
 volatile uint8_t g_cnt_uwait;
+
+// Name the NeoPixel VRAM address so that indirect addressing in the assembly
+// function won't be necessary
+volatile const uint8_t * g_npx_0_r = &(g_disp_state.npxram[0][0]);
+volatile const uint8_t * g_npx_0_g = &(g_disp_state.npxram[0][1]);
+volatile const uint8_t * g_npx_0_b = &(g_disp_state.npxram[0][2]);
+volatile const uint8_t * g_npx_1_r = &(g_disp_state.npxram[1][0]);
+volatile const uint8_t * g_npx_1_g = &(g_disp_state.npxram[1][1]);
+volatile const uint8_t * g_npx_1_b = &(g_disp_state.npxram[1][2]);
+volatile const uint8_t * g_npx_2_r = &(g_disp_state.npxram[2][0]);
+volatile const uint8_t * g_npx_2_g = &(g_disp_state.npxram[2][1]);
+volatile const uint8_t * g_npx_2_b = &(g_disp_state.npxram[2][2]);
+volatile const uint8_t * g_npx_3_r = &(g_disp_state.npxram[3][0]);
+volatile const uint8_t * g_npx_3_g = &(g_disp_state.npxram[3][1]);
+volatile const uint8_t * g_npx_3_b = &(g_disp_state.npxram[3][2]);
+volatile const uint8_t * g_npx_4_r = &(g_disp_state.npxram[4][0]);
+volatile const uint8_t * g_npx_4_g = &(g_disp_state.npxram[4][1]);
+volatile const uint8_t * g_npx_4_b = &(g_disp_state.npxram[4][2]);
 
 // Assembly function prototypes
 extern void write_neopixel(void);
