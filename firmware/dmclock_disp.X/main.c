@@ -192,6 +192,18 @@ uint8_t command_cmp(char c) {
     return g_com_state.recv_buf[0] == (uint8_t)c;
 }
 
+// returns -1 on failure
+int8_t ctoi(uint8_t c) {
+    int16_t res;
+    
+    res = c - '0';
+    if(res < 0 || 9 < res) {
+        return -1;
+    } else {
+        return (int8_t)res;
+    }
+}
+
 void send_to_uart(const uint8_t * buf, size_t len) {
     size_t i;
     
@@ -279,13 +291,38 @@ void do_uart_recv(void)
     }
 }
 
-void do_command(void)
-{
+void process_command(void) {
+    int8_t res;
+    size_t i;
+    
     if(command_cmp('H')) {
         send_to_uart("Hello!\r\n", 8);
+    } if(command_cmp('T')) {
+        // THHMM\r\n
+        if(g_com_state.recv_buf_idx == 7) {
+            // 4 digits
+            for(i=0; i<4; i++) {
+                res = ctoi(g_com_state.recv_buf[i + 1]);
+                if(res < 0) {
+                    send_to_uart("??\r\n", 4);
+                    return;
+                } else {
+                    set_digit(i, res + 1);
+                }
+            }
+        } else {
+            // Bad usage
+            send_to_uart("??\r\n", 4);
+        }
     } else {
+        // Undefined commands
         send_to_uart("?\r\n", 3);
     }
+}
+
+void do_command(void)
+{
+    process_command();
     
     g_com_state.recv_buf_idx = 0;
 }
