@@ -229,6 +229,44 @@ void deactivate_colon(void)
     PWM3_LoadDutyValue(65535 / 8192);
 }
 
+void set_npx_color(uint8_t id, uint8_t r, uint8_t g, uint8_t b)
+{
+    g_disp_state.npxram[id][0] = r;
+    g_disp_state.npxram[id][1] = g;
+    g_disp_state.npxram[id][2] = b;
+}
+
+void show_npx(void) {
+    // Enter the critical section
+    INTERRUPT_GlobalInterruptDisable();
+    INTERRUPT_PeripheralInterruptDisable();
+    
+    g_npx_r = g_disp_state.npxram[4][0];
+    g_npx_g = g_disp_state.npxram[4][1];
+    g_npx_b = g_disp_state.npxram[4][2];
+    write_neopixel();
+    g_npx_r = g_disp_state.npxram[3][0];
+    g_npx_g = g_disp_state.npxram[3][1];
+    g_npx_b = g_disp_state.npxram[3][2];
+    write_neopixel();
+    g_npx_r = g_disp_state.npxram[2][0];
+    g_npx_g = g_disp_state.npxram[2][1];
+    g_npx_b = g_disp_state.npxram[2][2];
+    write_neopixel();
+    g_npx_r = g_disp_state.npxram[1][0];
+    g_npx_g = g_disp_state.npxram[1][1];
+    g_npx_b = g_disp_state.npxram[1][2];
+    write_neopixel();
+    g_npx_r = g_disp_state.npxram[0][0];
+    g_npx_g = g_disp_state.npxram[0][1];
+    g_npx_b = g_disp_state.npxram[0][2];
+    write_neopixel();
+    
+    // Exit the critical section
+    INTERRUPT_GlobalInterruptEnable();
+    INTERRUPT_PeripheralInterruptEnable();
+}
+
 uint8_t command_cmp(char c) {
     return g_com_state.recv_buf[0] == (uint8_t)c;
 }
@@ -381,27 +419,13 @@ void main(void)
     // Deactivale the colon
     deactivate_colon();
     
-    // debug: Neo Pixel driver tests
-    g_npx_r = 0x20;
-    g_npx_g = 0x20;
-    g_npx_b = 0x0F;
-    write_neopixel();
-    g_npx_r = 0x20;
-    g_npx_g = 0x20;
-    g_npx_b = 0x0F;
-    write_neopixel();
-    g_npx_r = 0x20;
-    g_npx_g = 0x20;
-    g_npx_b = 0x0F;
-    write_neopixel();
-    g_npx_r = 0x20;
-    g_npx_g = 0x20;
-    g_npx_b = 0x0F;
-    write_neopixel();
-    g_npx_r = 0x20;
-    g_npx_g = 0x20;
-    g_npx_b = 0x0F;
-    write_neopixel();
+    // debug: Test NeoPixel driver APIs
+    set_npx_color(0, 0x40, 0x00, 0x00);
+    set_npx_color(1, 0x00, 0x40, 0x00);
+    set_npx_color(2, 0x00, 0x00, 0x40);
+    set_npx_color(3, 0x20, 0x20, 0x00);
+    set_npx_color(4, 0x20, 0x20, 0x20);
+    show_npx();
     
     // Register the interrupt handlers
     // The pixel pulse timer
