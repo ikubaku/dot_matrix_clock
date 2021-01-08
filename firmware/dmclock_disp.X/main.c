@@ -373,75 +373,115 @@ void do_uart_recv(void)
     }
 }
 
+// Command routines (returns -1 on failure, 0 on success)
+int8_t do_hello_command(void)
+{
+    send_to_uart("Hello!\r\n", 8);
+    
+    return 0;
+}
+
+int8_t do_time_command(void)
+{
+    size_t i;
+    int8_t r_digit;
+    
+    // THHMM\r\n
+    if(g_com_state.recv_buf_idx != 7) {
+        return -1;
+    }
+    
+    // 4 digits
+    for(i=0; i<4; i++) {
+        r_digit = ctoi(g_com_state.recv_buf[i + 1]);
+        if(r_digit < 0) {
+            return -1;
+        } else {
+            set_digit(i, r_digit + 1);
+        }
+    }
+    return 0;
+}
+
+int8_t do_neo_pixel_command(void) {
+    int8_t r_id;
+    int16_t r_red, r_green, r_blue;
+    
+    // N{pixel_id}RRGGBB\r\n
+    // ex. N1FE072B\r\n
+    if(g_com_state.recv_buf_idx != 10) {
+        return -1;
+    }
+    
+    // Get the pixel ID
+    r_id = ctoi(g_com_state.recv_buf[1]);
+    if(r_id < 0 || 4 < r_id) {
+        return -1;
+    }
+
+    // Parse the color data
+    // Red
+    r_red = parse_two_digit_hex(g_com_state.recv_buf + 2);
+    if(r_red < 0) {
+        return -1;
+    }
+    // Green
+    r_green = parse_two_digit_hex(g_com_state.recv_buf + 4);
+    if(r_green < 0) {
+        return -1;
+    }
+    // Blue
+    r_blue = parse_two_digit_hex(g_com_state.recv_buf + 6);
+    if(r_blue < 0) {
+        return -1;
+    }
+    set_npx_color(r_id, r_red, r_green, r_blue);
+    return 0;
+}
+
+int8_t do_light_command(void)
+{
+    show_npx();
+    return 0;
+}
+
+int8_t do_activate_colon_command(void)
+{
+    activate_colon();
+    return 0;
+}
+
+int8_t do_deactivate_colon_command(void)
+{
+    deactivate_colon();
+    return 0;
+}
+
 void process_command(void)
 {
     int8_t res;
-    uint16_t r_red, r_green, r_blue;
-    size_t i;
     
     if(command_cmp('H')) {
-        send_to_uart("Hello!\r\n", 8);
+        res = do_hello_command();
     } else if(command_cmp('T')) {
-        // THHMM\r\n
-        if(g_com_state.recv_buf_idx == 7) {
-            // 4 digits
-            for(i=0; i<4; i++) {
-                res = ctoi(g_com_state.recv_buf[i + 1]);
-                if(res < 0) {
-                    send_to_uart("??\r\n", 4);
-                    return;
-                } else {
-                    set_digit(i, res + 1);
-                }
-            }
-        } else {
-            // Bad usage
-            send_to_uart("??\r\n", 4);
-        }
+        res = do_time_command();
     } else if(command_cmp('N')) {
-        // N{pixel_id}RRGGBB\r\n
-        // ex. N1FE072B\r\n
-        if(g_com_state.recv_buf_idx == 10) {
-            // Get the pixel ID
-            res = ctoi(g_com_state.recv_buf[1]);
-            if(res < 0 || 4 < res) {
-                send_to_uart("??\r\n", 4);
-                return;
-            }
-            
-            // Parse the color data
-            // Red
-            r_red = parse_two_digit_hex(g_com_state.recv_buf + 2);
-            if(r_red < 0) {
-                send_to_uart("??\r\n", 4);
-                return;
-            }
-            // Green
-            r_green = parse_two_digit_hex(g_com_state.recv_buf + 4);
-            if(r_green < 0) {
-                send_to_uart("??\r\n", 4);
-                return;
-            }
-            // Blue
-            r_blue = parse_two_digit_hex(g_com_state.recv_buf + 6);
-            if(r_blue < 0) {
-                send_to_uart("??\r\n", 4);
-                return;
-            }
-            set_npx_color(res, r_red, r_green, r_blue);
-        } else {
-            // Bad usage
-            send_to_uart("??\r\n", 4);
-        }
+        res = do_neo_pixel_command();
     } else if(command_cmp('L')) {
-        show_npx();
+        res = do_light_command();
     } else if(command_cmp('A')) {
-        activate_colon();
+        res = do_activate_colon_command();
     } else if(command_cmp('D')) {
-        deactivate_colon();
+        res == do_deactivate_colon_command();
     } else {
         // Undefined commands
         send_to_uart("?\r\n", 3);
+        return;
+    }
+    
+    if(res < 0) {
+        // Bad usage
+        send_to_uart("??\r\n", 4);
     }
 }
 
