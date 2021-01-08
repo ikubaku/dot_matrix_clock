@@ -1,0 +1,16 @@
+[package]
+name = "dmcd"
+version = "0.1.0"
+authors = ["ikubaku <hide4d51@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rppal = "0.11"
+clokwerk = "0.3"
+chrono = "0.4"
+embedded-graphics = "0.6"
+ssd1306 = "0.5"
+bme280 = "0.2"
+embedded-ccs811 = "0.2"
