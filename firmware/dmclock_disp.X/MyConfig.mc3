@@ -1391,7 +1391,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="EUSART1" name="baudRateErrorLabel"/>
-         <value>Error: -0.020 %</value>
+         <value>Error: -0.080 %</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="Pin Module" registerAlias="IOCBN" settingAlias="IOCBN6" alias="disabled"/>
@@ -1463,7 +1463,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="EUSART1" registerAlias="SPBRGL"/>
-         <value>130</value>
+         <value>138</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="Pin Module" registerAlias="IOCBN" settingAlias="IOCBN7" alias="enabled"/>
@@ -1603,7 +1603,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="EUSART1" registerAlias="SPBRGH"/>
-         <value>6</value>
+         <value>0</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="SLRCONC" settingAlias="SLRC1"/>
@@ -3863,7 +3863,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="EUSART1" registerAlias="SPBRGH" settingAlias="SPBRGH"/>
-         <value>6</value>
+         <value>0</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="TMR0" registerAlias="T0CON0" settingAlias="T0EN"/>
@@ -5787,7 +5787,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="EUSART1" name="baudRateComboBox"/>
-         <value>9600</value>
+         <value>115200</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="ODCONB" settingAlias="ODCB3"/>
@@ -7307,7 +7307,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="EUSART1" registerAlias="SPBRGL" settingAlias="SPBRGL"/>
-         <value>130</value>
+         <value>138</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="ANSELC" settingAlias="ANSELC1"/>
@@ -7745,7 +7745,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files/eusart1.c</file>
-         <hash>4055a105dba2c8382f4fb96834ca6d0697c024a2184d8c7af1d8d3db6c0dc29e</hash>
+         <hash>c55575c9044b867b92170a17a4c3cf48744ae9ab84e777fdb5854770cd6a2096</hash>
       </entry>
       <entry>
          <file>mcc_generated_files/device_config.c</file>
