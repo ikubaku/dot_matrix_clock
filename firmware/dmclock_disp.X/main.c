@@ -297,7 +297,7 @@ void process_command(void) {
     
     if(command_cmp('H')) {
         send_to_uart("Hello!\r\n", 8);
-    } if(command_cmp('T')) {
+    } else if(command_cmp('T')) {
         // THHMM\r\n
         if(g_com_state.recv_buf_idx == 7) {
             // 4 digits
