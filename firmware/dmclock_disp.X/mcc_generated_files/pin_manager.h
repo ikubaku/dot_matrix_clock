@@ -317,6 +317,26 @@
 #define IO_SHDN_SetAnalogMode()      do { ANSELBbits.ANSELB5 = 1; } while(0)
 #define IO_SHDN_SetDigitalMode()     do { ANSELBbits.ANSELB5 = 0; } while(0)
 
+// get/set IO_NPX aliases
+#define IO_NPX_TRIS                 TRISCbits.TRISC0
+#define IO_NPX_LAT                  LATCbits.LATC0
+#define IO_NPX_PORT                 PORTCbits.RC0
+#define IO_NPX_WPU                  WPUCbits.WPUC0
+#define IO_NPX_OD                   ODCONCbits.ODCC0
+#define IO_NPX_ANS                  ANSELCbits.ANSELC0
+#define IO_NPX_SetHigh()            do { LATCbits.LATC0 = 1; } while(0)
+#define IO_NPX_SetLow()             do { LATCbits.LATC0 = 0; } while(0)
+#define IO_NPX_Toggle()             do { LATCbits.LATC0 = ~LATCbits.LATC0; } while(0)
+#define IO_NPX_GetValue()           PORTCbits.RC0
+#define IO_NPX_SetDigitalInput()    do { TRISCbits.TRISC0 = 1; } while(0)
+#define IO_NPX_SetDigitalOutput()   do { TRISCbits.TRISC0 = 0; } while(0)
+#define IO_NPX_SetPullup()          do { WPUCbits.WPUC0 = 1; } while(0)
+#define IO_NPX_ResetPullup()        do { WPUCbits.WPUC0 = 0; } while(0)
+#define IO_NPX_SetPushPull()        do { ODCONCbits.ODCC0 = 0; } while(0)
+#define IO_NPX_SetOpenDrain()       do { ODCONCbits.ODCC0 = 1; } while(0)
+#define IO_NPX_SetAnalogMode()      do { ANSELCbits.ANSELC0 = 1; } while(0)
+#define IO_NPX_SetDigitalMode()     do { ANSELCbits.ANSELC0 = 0; } while(0)
+
 // get/set RC6 procedures
 #define RC6_SetHigh()            do { LATCbits.LATC6 = 1; } while(0)
 #define RC6_SetLow()             do { LATCbits.LATC6 = 0; } while(0)
