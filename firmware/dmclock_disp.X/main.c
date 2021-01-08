@@ -48,6 +48,8 @@
 
 #define MATRIX_WIDTH 20
 
+#define COM_RECV_BUFLEN 32
+
 struct DisplayState
 {
     uint8_t selected_row;    // 1-indexed !!
@@ -59,10 +61,20 @@ struct DisplayState
     uint8_t vram[MATRIX_WIDTH];    // The bit[n] stores ROWn pixel.
 };
 
+struct CommandState
+{
+    uint8_t recv_buf[COM_RECV_BUFLEN];
+    uint8_t recv_buf_idx;
+};
+
 struct DisplayState g_disp_state;
 #define GET_PIXEL_FROM_GLOBAL_VRAM(x, y) ((g_disp_state.vram[x] & (1 << (y))) ? 1 : 0)
 
+struct CommandState g_com_state;
+
 uint8_t g_is_pixel_pulse;
+
+uint8_t g_is_command_ready;
 
 void initialize_global_state(void)
 {
@@ -72,6 +84,8 @@ void initialize_global_state(void)
     g_disp_state.pos_x_c = 0;
     g_disp_state.pos_y_c = 0;
     g_disp_state.is_dot_active = B_FALSE;
+    
+    g_com_state.recv_buf_idx = 0;
 }
 
 void select_last_row(void)
@@ -159,6 +173,20 @@ void send_pixel(void)
     }
 }
 
+uint8_t command_cmp(char c) {
+    return g_com_state.recv_buf[0] == (uint8_t)c;
+}
+
+void send_to_uart(const uint8_t * buf, size_t len) {
+    size_t i;
+    
+    while(!EUSART1_is_tx_ready());
+    for(i=0; i<len; i++) {
+        EUSART1_Write(buf[i]);
+        while(!EUSART1_is_tx_done());
+    }
+}
+
 void do_pixel_pulse(void)
 {
     if(g_disp_state.is_hsync) {
@@ -216,6 +244,37 @@ void do_dot_blink(void)
     }
 }
 
+void do_uart_recv(void)
+{
+    if(EUSART1_is_rx_ready()) {
+        uint8_t idx = g_com_state.recv_buf_idx;
+        if(idx >= COM_RECV_BUFLEN) {
+            // Buffer overflow
+            idx = 0;
+        }
+        g_com_state.recv_buf[idx] = EUSART1_Read();
+        
+        // Check for the CRLF
+        if(idx > 0) {
+            if(g_com_state.recv_buf[idx-1] == '\r' && g_com_state.recv_buf[idx] == '\n') {
+                g_is_command_ready = B_TRUE;
+            }
+        }
+        g_com_state.recv_buf_idx = idx + 1;
+    }
+}
+
+void do_command(void)
+{
+    if(command_cmp('H')) {
+        send_to_uart("Hello!\r\n", 8);
+    } else {
+        send_to_uart("?\r\n", 3);
+    }
+    
+    g_com_state.recv_buf_idx = 0;
+}
+
 /*
                          Main application
  */
@@ -226,6 +285,7 @@ void main(void)
     
     // Initialize the global variables
     g_is_pixel_pulse = B_FALSE;
+    g_is_command_ready = B_FALSE;
     initialize_global_state();
     
     // De-assert DCLR and release SHDN
@@ -242,6 +302,8 @@ void main(void)
     TMR1_SetInterruptHandler(do_row_start);
     // debug: dot timer
     TMR3_SetInterruptHandler(do_dot_blink);
+    // UART command receiver
+    //EUSART1_SetRxInterruptHandler(do_uart_recv);
     
     // DEBUG: Set the initial patterns
     g_disp_state.vram[19] = 0b00000110;
@@ -287,6 +349,11 @@ void main(void)
         if(g_is_pixel_pulse) {
             g_is_pixel_pulse = B_FALSE;
             do_pixel_pulse();
+        }
+        do_uart_recv();
+        if(g_is_command_ready) {
+            g_is_command_ready = B_FALSE;
+            do_command();
         }
         //__delay_ms(500);
     }
