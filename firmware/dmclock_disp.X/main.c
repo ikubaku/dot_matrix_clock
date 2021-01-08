@@ -321,28 +321,6 @@ void main(void)
     //EUSART1_SetRxInterruptHandler(do_uart_recv);
     
     // DEBUG: Set the initial patterns
-    /*
-    g_disp_state.vram[19] = 0b00000110;
-    g_disp_state.vram[18] = 0b00011001;
-    g_disp_state.vram[17] = 0b00101001;
-    g_disp_state.vram[16] = 0b01001001;
-    g_disp_state.vram[15] = 0b00000110;
-    g_disp_state.vram[14] = 0b00110110;
-    g_disp_state.vram[13] = 0b01001001;
-    g_disp_state.vram[12] = 0b01001001;
-    g_disp_state.vram[11] = 0b01001001;
-    g_disp_state.vram[10] = 0b00110110;
-    g_disp_state.vram[9] = 0b00000110;
-    g_disp_state.vram[8] = 0b00011001;
-    g_disp_state.vram[7] = 0b00101001;
-    g_disp_state.vram[6] = 0b01001001;
-    g_disp_state.vram[5] = 0b00000110;
-    g_disp_state.vram[4] = 0b00000000;
-    g_disp_state.vram[3] = 0b01000000;
-    g_disp_state.vram[2] = 0b01111111;
-    g_disp_state.vram[1] = 0b01000010;
-    g_disp_state.vram[0] = 0b00000000;
-    */
     set_digit(0, 2);
     set_digit(1, 10);
     set_digit(2, 9);
