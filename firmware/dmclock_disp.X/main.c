@@ -48,6 +48,8 @@
 
 #define MATRIX_WIDTH 20
 
+#define COM_RECV_BUFLEN 32
+
 struct DisplayState
 {
     uint8_t selected_row;    // 1-indexed !!
@@ -59,30 +61,36 @@ struct DisplayState
     uint8_t vram[MATRIX_WIDTH];    // The bit[n] stores ROWn pixel.
 };
 
-struct DisplayState g_state;
-#define GET_PIXEL_FROM_GLOBAL_VRAM(x, y) ((g_state.vram[x] & (1 << (y))) ? 1 : 0)
+struct CommandState
+{
+    uint8_t recv_buf[COM_RECV_BUFLEN];
+    uint8_t recv_buf_idx;
+};
+
+struct DisplayState g_disp_state;
+#define GET_PIXEL_FROM_GLOBAL_VRAM(x, y) ((g_disp_state.vram[x] & (1 << (y))) ? 1 : 0)
 
 uint8_t g_is_pixel_pulse;
 
 void initialize_global_state(void)
 {
-    g_state.selected_row = 0;
-    g_state.clock_phase = 0;
-    g_state.is_hsync = 0;
-    g_state.pos_x_c = 0;
-    g_state.pos_y_c = 0;
-    g_state.is_dot_active = B_FALSE;
+    g_disp_state.selected_row = 0;
+    g_disp_state.clock_phase = 0;
+    g_disp_state.is_hsync = 0;
+    g_disp_state.pos_x_c = 0;
+    g_disp_state.pos_y_c = 0;
+    g_disp_state.is_dot_active = B_FALSE;
 }
 
 void select_last_row(void)
 {
-    g_state.selected_row = 7;
+    g_disp_state.selected_row = 7;
     IO_ROW7_SetHigh();
 }
 
 void unselect_rows(void)
 {
-    g_state.selected_row = 0;
+    g_disp_state.selected_row = 0;
     IO_ROW1_SetLow();
     IO_ROW2_SetLow();
     IO_ROW3_SetLow();
@@ -94,17 +102,17 @@ void unselect_rows(void)
 
 uint8_t select_next_row(void)
 {
-    if(g_state.selected_row == 0) {
+    if(g_disp_state.selected_row == 0) {
         // None enabled
         return B_FALSE;
-    } else if(g_state.selected_row == 7) {
+    } else if(g_disp_state.selected_row == 7) {
         // Wrap the next selection
-        g_state.selected_row = 1;
+        g_disp_state.selected_row = 1;
     } else {
-        g_state.selected_row += 1;
+        g_disp_state.selected_row += 1;
     }
     
-    switch(g_state.selected_row) {
+    switch(g_disp_state.selected_row) {
         case 1:
             IO_ROW7_SetLow();
             IO_ROW1_SetHigh();
@@ -142,50 +150,50 @@ uint8_t select_next_row(void)
 void send_pixel(void)
 {
     // The data is sampled at the rising-edge of the SCLK.
-    if(g_state.clock_phase) {
+    if(g_disp_state.clock_phase) {
         // Falling-edge (update the DOUT)
-        if(GET_PIXEL_FROM_GLOBAL_VRAM(g_state.pos_x_c, g_state.pos_y_c)) {
+        if(GET_PIXEL_FROM_GLOBAL_VRAM(g_disp_state.pos_x_c, g_disp_state.pos_y_c)) {
             IO_DOUT_SetHigh();
         } else {
             IO_DOUT_SetLow();
         }
         
         IO_SCLK_SetLow();
-        g_state.clock_phase = 0;
+        g_disp_state.clock_phase = 0;
     } else {
         // Rising-edge (do not change anything except the clock signal)
         IO_SCLK_SetHigh();
-        g_state.clock_phase = 1;
+        g_disp_state.clock_phase = 1;
     }
 }
 
 void do_pixel_pulse(void)
 {
-    if(g_state.is_hsync) {
+    if(g_disp_state.is_hsync) {
         // Stop the pixel pulse timer(TMR0)
         TMR0_StopTimer();
-        g_state.is_hsync = B_FALSE;
+        g_disp_state.is_hsync = B_FALSE;
         IO_DISP_SetHigh();
         // NOTE: This select_next_row selects the "current" row that we just
         // have send the data.
         // assert(g_state.pos_y_c == g_state.selected_row - 1);
         if(select_next_row()) {
             // VSYNC
-            g_state.pos_y_c = 0;
+            g_disp_state.pos_y_c = 0;
         } else {
-            g_state.pos_y_c += 1;
+            g_disp_state.pos_y_c += 1;
         }
     } else {
         send_pixel();
-        if(g_state.clock_phase) {
+        if(g_disp_state.clock_phase) {
             // Step the x value of the current pixel position
-            if(g_state.pos_x_c == MATRIX_WIDTH - 1) {
-                g_state.pos_x_c = 0;
+            if(g_disp_state.pos_x_c == MATRIX_WIDTH - 1) {
+                g_disp_state.pos_x_c = 0;
                 // Clock the DISP pin on the next call
                 IO_DISP_SetLow();
-                g_state.is_hsync = B_TRUE;
+                g_disp_state.is_hsync = B_TRUE;
             } else {
-                g_state.pos_x_c += 1;
+                g_disp_state.pos_x_c += 1;
             }
         }
     }
@@ -204,15 +212,22 @@ void do_row_start(void)
 
 void do_dot_blink(void)
 {
-    if(g_state.is_dot_active) {
-        g_state.is_dot_active = B_FALSE;
+    if(g_disp_state.is_dot_active) {
+        g_disp_state.is_dot_active = B_FALSE;
     } else {
-        g_state.is_dot_active = B_TRUE;
+        g_disp_state.is_dot_active = B_TRUE;
     }
-    if(g_state.is_dot_active) {
+    if(g_disp_state.is_dot_active) {
         PWM3_LoadDutyValue(65535 / 1024);
     } else {
         PWM3_LoadDutyValue(65535 / 8192);
+    }
+}
+
+void do_uart_recv(void)
+{
+    while(EUSART1_is_rx_ready()) {
+        
     }
 }
 
@@ -242,28 +257,30 @@ void main(void)
     TMR1_SetInterruptHandler(do_row_start);
     // debug: dot timer
     TMR3_SetInterruptHandler(do_dot_blink);
+    // UART command receiver
+    EUSART1_SetRxInterruptHandler(do_uart_recv);
     
     // DEBUG: Set the initial patterns
-    g_state.vram[19] = 0b00000110;
-    g_state.vram[18] = 0b00011001;
-    g_state.vram[17] = 0b00101001;
-    g_state.vram[16] = 0b01001001;
-    g_state.vram[15] = 0b00000110;
-    g_state.vram[14] = 0b00110110;
-    g_state.vram[13] = 0b01001001;
-    g_state.vram[12] = 0b01001001;
-    g_state.vram[11] = 0b01001001;
-    g_state.vram[10] = 0b00110110;
-    g_state.vram[9] = 0b00000110;
-    g_state.vram[8] = 0b00011001;
-    g_state.vram[7] = 0b00101001;
-    g_state.vram[6] = 0b01001001;
-    g_state.vram[5] = 0b00000110;
-    g_state.vram[4] = 0b00000000;
-    g_state.vram[3] = 0b01000000;
-    g_state.vram[2] = 0b01111111;
-    g_state.vram[1] = 0b01000010;
-    g_state.vram[0] = 0b00000000;
+    g_disp_state.vram[19] = 0b00000110;
+    g_disp_state.vram[18] = 0b00011001;
+    g_disp_state.vram[17] = 0b00101001;
+    g_disp_state.vram[16] = 0b01001001;
+    g_disp_state.vram[15] = 0b00000110;
+    g_disp_state.vram[14] = 0b00110110;
+    g_disp_state.vram[13] = 0b01001001;
+    g_disp_state.vram[12] = 0b01001001;
+    g_disp_state.vram[11] = 0b01001001;
+    g_disp_state.vram[10] = 0b00110110;
+    g_disp_state.vram[9] = 0b00000110;
+    g_disp_state.vram[8] = 0b00011001;
+    g_disp_state.vram[7] = 0b00101001;
+    g_disp_state.vram[6] = 0b01001001;
+    g_disp_state.vram[5] = 0b00000110;
+    g_disp_state.vram[4] = 0b00000000;
+    g_disp_state.vram[3] = 0b01000000;
+    g_disp_state.vram[2] = 0b01111111;
+    g_disp_state.vram[1] = 0b01000010;
+    g_disp_state.vram[0] = 0b00000000;
 
     // If using interrupts in PIC18 High/Low Priority Mode you need to enable the Global High and Low Interrupts
     // If using interrupts in PIC Mid-Range Compatibility Mode you need to enable the Global and Peripheral Interrupts
