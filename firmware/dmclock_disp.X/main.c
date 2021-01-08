@@ -48,8 +48,6 @@
 
 #define MATRIX_WIDTH 20
 
-#define COM_RECV_BUFLEN 32
-
 struct DisplayState
 {
     uint8_t selected_row;    // 1-indexed !!
@@ -59,12 +57,6 @@ struct DisplayState
     uint8_t pos_y_c;
     uint8_t is_dot_active;
     uint8_t vram[MATRIX_WIDTH];    // The bit[n] stores ROWn pixel.
-};
-
-struct CommandState
-{
-    uint8_t recv_buf[COM_RECV_BUFLEN];
-    uint8_t recv_buf_idx;
 };
 
 struct DisplayState g_disp_state;
@@ -224,13 +216,6 @@ void do_dot_blink(void)
     }
 }
 
-void do_uart_recv(void)
-{
-    while(EUSART1_is_rx_ready()) {
-        
-    }
-}
-
 /*
                          Main application
  */
@@ -257,8 +242,6 @@ void main(void)
     TMR1_SetInterruptHandler(do_row_start);
     // debug: dot timer
     TMR3_SetInterruptHandler(do_dot_blink);
-    // UART command receiver
-    EUSART1_SetRxInterruptHandler(do_uart_recv);
     
     // DEBUG: Set the initial patterns
     g_disp_state.vram[19] = 0b00000110;
