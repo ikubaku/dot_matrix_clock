@@ -188,6 +188,18 @@ void set_digit(uint8_t digit, uint8_t font_id)
     }
 }
 
+void activate_colon(void)
+{
+    g_disp_state.is_dot_active = B_TRUE;
+    PWM3_LoadDutyValue(65535 / 1024);
+}
+
+void deactivate_colon(void)
+{
+    g_disp_state.is_dot_active = B_FALSE;
+    PWM3_LoadDutyValue(65535 / 8192);
+}
+
 uint8_t command_cmp(char c) {
     return g_com_state.recv_buf[0] == (uint8_t)c;
 }
@@ -257,20 +269,6 @@ void do_row_start(void)
     TMR0_StartTimer();
 }
 
-void do_dot_blink(void)
-{
-    if(g_disp_state.is_dot_active) {
-        g_disp_state.is_dot_active = B_FALSE;
-    } else {
-        g_disp_state.is_dot_active = B_TRUE;
-    }
-    if(g_disp_state.is_dot_active) {
-        PWM3_LoadDutyValue(65535 / 1024);
-    } else {
-        PWM3_LoadDutyValue(65535 / 8192);
-    }
-}
-
 void do_uart_recv(void)
 {
     if(EUSART1_is_rx_ready()) {
@@ -314,6 +312,10 @@ void process_command(void) {
             // Bad usage
             send_to_uart("??\r\n", 4);
         }
+    } else if(command_cmp('A')) {
+        activate_colon();
+    } else if(command_cmp('D')) {
+        deactivate_colon();
     } else {
         // Undefined commands
         send_to_uart("?\r\n", 3);
@@ -346,6 +348,9 @@ void main(void)
     
     // Select the last row
     select_last_row();
+    
+    // Deactivale the colon
+    deactivate_colon();
     
     // Register the interrupt handlers
     // The pixel pulse timer
