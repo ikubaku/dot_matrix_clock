@@ -78,6 +78,13 @@ uint8_t g_is_pixel_pulse;
 
 uint8_t g_is_command_ready;
 
+// Working memory for the assembly functions
+volatile uint8_t g_cnt_bit;
+volatile uint8_t g_cnt_uwait;
+
+// Assembly function prototypes
+extern void write_neopixel(void);
+
 void initialize_global_state(void)
 {
     g_disp_state.selected_row = 0;
@@ -351,6 +358,9 @@ void main(void)
     
     // Deactivale the colon
     deactivate_colon();
+    
+    // debug: Neo Pixel driver tests
+    write_neopixel();
     
     // Register the interrupt handlers
     // The pixel pulse timer

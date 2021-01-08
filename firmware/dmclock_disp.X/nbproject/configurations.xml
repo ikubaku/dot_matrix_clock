@@ -39,6 +39,7 @@
         <itemPath>mcc_generated_files/pwm3.c</itemPath>
       </logicalFolder>
       <itemPath>main.c</itemPath>
+      <itemPath>neopixel.s</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
