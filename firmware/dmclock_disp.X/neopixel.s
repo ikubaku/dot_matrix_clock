@@ -17,11 +17,6 @@ psect   neopixel_driver,local,class=CODE,reloc=2 ; PIC18
 
 global _g_cnt_bit, _g_cnt_uwait
 global _g_npx_r, _g_npx_g, _g_npx_b
-//global _g_npx_0_r, g_npx_0_g, g_npx_0_b
-//global _g_npx_1_r, g_npx_1_g, g_npx_1_b
-//global _g_npx_2_r, g_npx_2_g, g_npx_2_b
-//global _g_npx_3_r, g_npx_3_g, g_npx_3_b
-//global _g_npx_4_r, g_npx_4_g, g_npx_4_b
 
 global _write_neopixel ; extern of bar function goes in the C source file
 _write_neopixel:
@@ -74,9 +69,6 @@ _write_neopixel:
     MOVLW 8
     MOVWF _g_cnt_bit, F
     bit_start_r:
-	; Send 8bits of signal
-	; 0.8us of H and 0.4us of L on Mark
-	; 0.4us; o.8us on Space
 	BTFSS _g_npx_r, 7
 	GOTO bit_not_set_r
 	BSF PORTC, 0
@@ -119,9 +111,6 @@ _write_neopixel:
     MOVLW 8
     MOVWF _g_cnt_bit, F
     bit_start_b:
-	; Send 8bits of signal
-	; 0.8us of H and 0.4us of L on Mark
-	; 0.4us; o.8us on Space
 	BTFSS _g_npx_b, 7
 	GOTO bit_not_set_b
 	BSF PORTC, 0

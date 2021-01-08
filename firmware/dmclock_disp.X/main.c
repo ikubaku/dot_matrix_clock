@@ -432,8 +432,6 @@ void main(void)
     TMR0_SetInterruptHandler(notify_pixel_pulse);
     // The row start timer
     TMR1_SetInterruptHandler(do_row_start);
-    // UART command receiver
-    //EUSART1_SetRxInterruptHandler(do_uart_recv);
     
     // DEBUG: Set the initial patterns
     set_digit(0, 2);
@@ -469,7 +467,6 @@ void main(void)
             g_is_command_ready = B_FALSE;
             do_command();
         }
-        //__delay_ms(500);
     }
 }
 
