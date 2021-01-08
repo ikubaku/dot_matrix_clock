@@ -352,8 +352,6 @@ void main(void)
     TMR0_SetInterruptHandler(notify_pixel_pulse);
     // The row start timer
     TMR1_SetInterruptHandler(do_row_start);
-    // debug: dot timer
-    TMR3_SetInterruptHandler(do_dot_blink);
     // UART command receiver
     //EUSART1_SetRxInterruptHandler(do_uart_recv);
     
