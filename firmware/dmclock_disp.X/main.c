@@ -268,6 +268,37 @@ int8_t ctoi(uint8_t c)
     }
 }
 
+// significant digit first (that is, buf[0] == '1' && buf[1] == '2' if value = 0x12)
+// returns -1 on failure
+int16_t parse_two_digit_hex(const uint8_t * buf)
+{
+    int8_t d1, d0;
+    
+    // First, try ctoi for every digit
+    d1 = ctoi(buf[0]);
+    d0 = ctoi(buf[1]);
+    
+    // Parse as a hex-digit if ctoi failed
+    if(d1 < 0) {
+        d1 = buf[0] - 'A';
+        if(d1 < 0 || 5 < d1) {
+            return -1;
+        } else {
+            d1 += 10;
+        }
+    }
+    if(d0 < 0) {
+        d0 = buf[1] - 'A';
+        if(d0 < 0 || 5 < d0) {
+            return -1;
+        } else {
+            d0 += 10;
+        }
+    }
+    
+    return d1 * 10 + d0;
+}
+
 void send_to_uart(const uint8_t * buf, size_t len)
 {
     size_t i;
@@ -345,6 +376,7 @@ void do_uart_recv(void)
 void process_command(void)
 {
     int8_t res;
+    uint16_t r_red, r_green, r_blue;
     size_t i;
     
     if(command_cmp('H')) {
@@ -366,6 +398,43 @@ void process_command(void)
             // Bad usage
             send_to_uart("??\r\n", 4);
         }
+    } else if(command_cmp('N')) {
+        // N{pixel_id}RRGGBB\r\n
+        // ex. N1FE072B\r\n
+        if(g_com_state.recv_buf_idx == 10) {
+            // Get the pixel ID
+            res = ctoi(g_com_state.recv_buf[1]);
+            if(res < 0 || 4 < res) {
+                send_to_uart("??\r\n", 4);
+                return;
+            }
+            
+            // Parse the color data
+            // Red
+            r_red = parse_two_digit_hex(g_com_state.recv_buf + 2);
+            if(r_red < 0) {
+                send_to_uart("??\r\n", 4);
+                return;
+            }
+            // Green
+            r_green = parse_two_digit_hex(g_com_state.recv_buf + 4);
+            if(r_green < 0) {
+                send_to_uart("??\r\n", 4);
+                return;
+            }
+            // Blue
+            r_blue = parse_two_digit_hex(g_com_state.recv_buf + 6);
+            if(r_blue < 0) {
+                send_to_uart("??\r\n", 4);
+                return;
+            }
+            set_npx_color(res, r_red, r_green, r_blue);
+        } else {
+            // Bad usage
+            send_to_uart("??\r\n", 4);
+        }
+    } else if(command_cmp('L')) {
+        show_npx();
     } else if(command_cmp('A')) {
         activate_colon();
     } else if(command_cmp('D')) {
