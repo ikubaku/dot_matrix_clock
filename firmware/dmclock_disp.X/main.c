@@ -218,7 +218,8 @@ void set_npx_color(uint8_t id, uint8_t r, uint8_t g, uint8_t b)
     g_disp_state.npxram[id][2] = b;
 }
 
-void show_npx(void) {
+void show_npx(void)
+{
     // Enter the critical section
     INTERRUPT_GlobalInterruptDisable();
     INTERRUPT_PeripheralInterruptDisable();
@@ -249,12 +250,14 @@ void show_npx(void) {
     INTERRUPT_PeripheralInterruptEnable();
 }
 
-uint8_t command_cmp(char c) {
+uint8_t command_cmp(char c)
+{
     return g_com_state.recv_buf[0] == (uint8_t)c;
 }
 
 // returns -1 on failure
-int8_t ctoi(uint8_t c) {
+int8_t ctoi(uint8_t c)
+{
     int16_t res;
     
     res = c - '0';
@@ -265,7 +268,8 @@ int8_t ctoi(uint8_t c) {
     }
 }
 
-void send_to_uart(const uint8_t * buf, size_t len) {
+void send_to_uart(const uint8_t * buf, size_t len)
+{
     size_t i;
     
     while(!EUSART1_is_tx_ready());
@@ -338,7 +342,8 @@ void do_uart_recv(void)
     }
 }
 
-void process_command(void) {
+void process_command(void)
+{
     int8_t res;
     size_t i;
     
@@ -437,8 +442,7 @@ void main(void)
     // Disable the Peripheral Interrupts
     //INTERRUPT_PeripheralInterruptDisable();
 
-    while (1)
-    {
+    while (1) {
         // Add your application code
         if(g_is_pixel_pulse) {
             g_is_pixel_pulse = B_FALSE;

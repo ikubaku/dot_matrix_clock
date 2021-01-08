@@ -20,7 +20,7 @@ global _g_npx_r, _g_npx_g, _g_npx_b
 
 global _write_neopixel ; extern of bar function goes in the C source file
 _write_neopixel:
-    // Green channel
+    ; Green channel
     MOVLW 8
     MOVWF _g_cnt_bit, F
     bit_start_g:
@@ -65,7 +65,7 @@ _write_neopixel:
 	DECFSZ _g_cnt_bit, F
 	GOTO bit_start_g
 
-    // Red channel
+    ; Red channel
     MOVLW 8
     MOVWF _g_cnt_bit, F
     bit_start_r:
@@ -107,7 +107,7 @@ _write_neopixel:
 	DECFSZ _g_cnt_bit, F
 	GOTO bit_start_r
 
-    // Blue channel
+    ; Blue channel
     MOVLW 8
     MOVWF _g_cnt_bit, F
     bit_start_b:
@@ -149,5 +149,4 @@ _write_neopixel:
 	DECFSZ _g_cnt_bit, F
 	GOTO bit_start_b
 	
-
     RETURN
