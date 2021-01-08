@@ -82,6 +82,9 @@ uint8_t g_is_command_ready;
 // Working memory for the assembly functions
 volatile uint8_t g_cnt_bit;
 volatile uint8_t g_cnt_uwait;
+volatile uint8_t g_npx_r;
+volatile uint8_t g_npx_g;
+volatile uint8_t g_npx_b;
 
 // Name the NeoPixel VRAM address so that indirect addressing in the assembly
 // function won't be necessary
@@ -379,6 +382,25 @@ void main(void)
     deactivate_colon();
     
     // debug: Neo Pixel driver tests
+    g_npx_r = 0x20;
+    g_npx_g = 0x20;
+    g_npx_b = 0x0F;
+    write_neopixel();
+    g_npx_r = 0x20;
+    g_npx_g = 0x20;
+    g_npx_b = 0x0F;
+    write_neopixel();
+    g_npx_r = 0x20;
+    g_npx_g = 0x20;
+    g_npx_b = 0x0F;
+    write_neopixel();
+    g_npx_r = 0x20;
+    g_npx_g = 0x20;
+    g_npx_b = 0x0F;
+    write_neopixel();
+    g_npx_r = 0x20;
+    g_npx_g = 0x20;
+    g_npx_b = 0x0F;
     write_neopixel();
     
     // Register the interrupt handlers
