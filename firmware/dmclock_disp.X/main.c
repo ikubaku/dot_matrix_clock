@@ -43,6 +43,8 @@
 
 #include "mcc_generated_files/mcc.h"
 
+#include "font.h"
+
 #define B_FALSE 0
 #define B_TRUE 1
 
@@ -170,6 +172,19 @@ void send_pixel(void)
         // Rising-edge (do not change anything except the clock signal)
         IO_SCLK_SetHigh();
         g_disp_state.clock_phase = 1;
+    }
+}
+
+void set_digit(uint8_t digit, uint8_t font_id)
+{
+    size_t i;
+    uint8_t * font;
+    
+    if(digit > 3) return;
+    
+    font = font5x7[font_id];
+    for(i=0; i<5; i++) {
+        g_disp_state.vram[5 * digit + i] = font[i];
     }
 }
 
@@ -306,6 +321,7 @@ void main(void)
     //EUSART1_SetRxInterruptHandler(do_uart_recv);
     
     // DEBUG: Set the initial patterns
+    /*
     g_disp_state.vram[19] = 0b00000110;
     g_disp_state.vram[18] = 0b00011001;
     g_disp_state.vram[17] = 0b00101001;
@@ -326,6 +342,11 @@ void main(void)
     g_disp_state.vram[2] = 0b01111111;
     g_disp_state.vram[1] = 0b01000010;
     g_disp_state.vram[0] = 0b00000000;
+    */
+    set_digit(0, 2);
+    set_digit(1, 10);
+    set_digit(2, 9);
+    set_digit(3, 10);
 
     // If using interrupts in PIC18 High/Low Priority Mode you need to enable the Global High and Low Interrupts
     // If using interrupts in PIC Mid-Range Compatibility Mode you need to enable the Global and Peripheral Interrupts
