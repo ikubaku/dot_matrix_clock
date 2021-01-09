@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut bme280 = BME280::new_primary(i2c.acquire_i2c(), Delay);
     bme280.init().unwrap();
     let ccs811_nwake = gpio.get(4)?.into_output();
-    let ccs811 = Ccs811::new(i2c.acquire_i2c(), SlaveAddr::Default, ccs811_nwake, Delay);
+    let ccs811 = Ccs811::new(i2c.acquire_i2c(), SlaveAddr::Alternative(true), ccs811_nwake, Delay);
     let mut ccs811 = ccs811.start_application().ok().unwrap();
     ccs811.set_mode(MeasurementMode::ConstantPower1s).unwrap();
 
