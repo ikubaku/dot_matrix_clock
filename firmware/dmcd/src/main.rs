@@ -71,8 +71,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Assign periodic tasks
     scheduler.every(1.minute()).run(create_clock_job(uart.clone()));
-    scheduler.every(1.second()).run(create_colon_blink_job(uart.clone()));
     scheduler.every(1.second()).run(create_display_job(i2c));
+    scheduler.every(1.second()).run(create_colon_blink_job(uart.clone()));
 
     // Do the main loop
     loop {
