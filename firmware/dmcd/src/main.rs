@@ -23,23 +23,11 @@ use sh1106::Builder;
 
 const TICK_MS: u32 = 10;
 
-fn create_clock_job<I2C>(uart: Arc<Mutex<Uart>>, i2c: &BusManagerStd<I2C>) -> Box<dyn FnMut() + Send + '_>
-where I2C: embedded_hal::blocking::i2c::Write + Send,
-      <I2C as embedded_hal::blocking::i2c::Write>::Error : std::fmt::Debug,
-{
-    let mut display: GraphicsMode<_> = Builder::new().connect_i2c(i2c.acquire_i2c()).into();
-    display.init().unwrap();
-    display.flush().unwrap();
-
+fn create_clock_job(uart: Arc<Mutex<Uart>>) -> Box<dyn FnMut() + Send> {
     Box::new(move || {
         let mut uart_handle = uart.try_lock().unwrap();
         let localtime = Local::now();
         uart_handle.write(format!("T{}\r\n", localtime.format("%H%M")).as_bytes()).unwrap();
-        Text::new(localtime.format("%S").to_string().as_str(), Point::zero())
-            .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
-            .draw(&mut display)
-            .unwrap();
-        display.flush().unwrap();
     })
 }
 
@@ -49,6 +37,24 @@ fn create_colon_blink_job(uart: Arc<Mutex<Uart>>) -> Box<dyn FnMut() + Send> {
         uart_handle.write("A\r\n".as_bytes()).unwrap();
         thread::sleep(Duration::from_millis(500));
         uart_handle.write("D\r\n".as_bytes()).unwrap();
+    })
+}
+
+fn create_display_job<I2C>(i2c: &BusManagerStd<I2C>) -> Box<dyn FnMut() + Send + '_>
+    where I2C: embedded_hal::blocking::i2c::Write + Send,
+          <I2C as embedded_hal::blocking::i2c::Write>::Error : std::fmt::Debug,
+{
+    let mut display: GraphicsMode<_> = Builder::new().connect_i2c(i2c.acquire_i2c()).into();
+    display.init().unwrap();
+    display.flush().unwrap();
+
+    Box::new(move || {
+        let localtime = Local::now();
+        Text::new(localtime.format("%S").to_string().as_str(), Point::zero())
+            .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+            .draw(&mut display)
+            .unwrap();
+        display.flush().unwrap();
     })
 }
 
@@ -63,8 +69,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut scheduler = Scheduler::new();
 
     // Assign periodic tasks
-    scheduler.every(1.minute()).run(create_clock_job::<_>(uart.clone(), i2c));
+    scheduler.every(1.minute()).run(create_clock_job(uart.clone()));
     scheduler.every(1.second()).run(create_colon_blink_job(uart.clone()));
+    scheduler.every(1.second()).run(create_display_job(i2c));
 
     // Do the main loop
     loop {
