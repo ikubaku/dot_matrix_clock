@@ -14,7 +14,7 @@ use chrono::prelude::*;
 use shared_bus::BusManagerStd;
 
 use embedded_graphics::prelude::*;
-use embedded_graphics::fonts::{Font6x8, Text};
+use embedded_graphics::fonts::{Font6x8, Font24x32, Text};
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::style::TextStyle;
 
@@ -52,8 +52,8 @@ fn create_display_job<I2C>(i2c: &BusManagerStd<I2C>) -> Box<dyn FnMut() + Send +
     Box::new(move || {
         let localtime = Local::now();
         display.clear();
-        Text::new(localtime.format("%S").to_string().as_str(), Point::zero())
-            .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+        Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 96))
+            .into_styled(TextStyle::new(Font24x32, BinaryColor::On))
             .draw(&mut display)
             .unwrap();
         display.flush().unwrap();
