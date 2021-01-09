@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
 
 use rppal::uart::{Parity, Uart};
+use rppal::gpio::Gpio;
 use rppal::i2c::I2c;
 
 use linux_embedded_hal::Delay;
@@ -27,6 +28,9 @@ use sh1106::displayrotation::DisplayRotation::Rotate90;
 
 use bme280::BME280;
 
+use embedded_ccs811::{Ccs811, SlaveAddr, MeasurementMode};
+use embedded_ccs811::prelude::*;
+
 const TICK_MS: u32 = 10;
 
 #[derive(Default)]
@@ -34,6 +38,8 @@ struct DMCState {
     ambient_temperature: f32,
     ambient_humidity: f32,
     pressure: f32,
+    e_co2: u16,
+    e_tvoc: u16,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -42,11 +48,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     let uart = Arc::new(Mutex::new(uart));
     let i2c = I2c::new()?;
     let i2c: &'static _ = shared_bus::new_std!(I2c = i2c).unwrap();
+    let gpio = Gpio::new()?;
     let mut display: GraphicsMode<_> = Builder::new().with_rotation(Rotate90).connect_i2c(i2c.acquire_i2c()).into();
     display.init().unwrap();
     display.flush().unwrap();
     let mut bme280 = BME280::new_primary(i2c.acquire_i2c(), Delay);
     bme280.init().unwrap();
+    let ccs811_nwake = gpio.get(4)?.into_output();
+    let ccs811 = Ccs811::new(i2c.acquire_i2c(), SlaveAddr::Default, ccs811_nwake, Delay);
+    let mut ccs811 = ccs811.start_application().ok().unwrap();
+    ccs811.set_mode(MeasurementMode::ConstantPower1s).unwrap();
 
     // Initialize other states
     let state = DMCState::default();
@@ -114,6 +125,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
                     .draw(&mut display)
                     .unwrap();
+                Text::new(format!("{} eCO2", state.e_co2).as_str(), Point::new(0, 32))
+                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                    .draw(&mut display)
+                    .unwrap();
+                Text::new(format!("{} eTVOC", state.e_tvoc).as_str(), Point::new(0, 40))
+                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                    .draw(&mut display)
+                    .unwrap();
                 display.flush().unwrap();
             }
         }
@@ -124,12 +143,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     thread::spawn(move || {
         loop {
             sensor_job_notifier_rx.recv().unwrap();
+            let bme280_res = bme280.measure().unwrap();
             {
-                let bme280_res = bme280.measure().unwrap();
                 let mut state = state_proxy_sensor.lock().unwrap();
                 state.ambient_temperature = bme280_res.temperature;
                 state.ambient_humidity = bme280_res.humidity;
                 state.pressure = bme280_res.pressure;
+            }
+            ccs811.set_environment(bme280_res.humidity, bme280_res.temperature).unwrap();
+            let ccs811_res = ccs811.data().unwrap();
+            {
+                let mut state = state_proxy_sensor.lock().unwrap();
+                state.e_co2 = ccs811_res.eco2;
+                state.e_tvoc = ccs811_res.etvoc;
             }
         }
     });
