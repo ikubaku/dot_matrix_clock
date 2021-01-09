@@ -100,7 +100,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .into_styled(TextStyle::new(Font24x32, BinaryColor::On))
                     .draw(&mut display)
                     .unwrap();
-                Text::new(format!("Temp: {:.2} C", state.ambient_temperature).as_str(), Point::zero())
+                Text::new(format!("{:.1} C", state.ambient_temperature).as_str(), Point::zero())
                     .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
                     .draw(&mut display)
                     .unwrap();
