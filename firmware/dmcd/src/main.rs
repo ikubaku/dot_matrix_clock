@@ -63,51 +63,59 @@ fn main() -> Result<(), Box<dyn Error>> {
     // clock
     let uart_proxy_clock = uart.clone();
     thread::spawn(move || {
-        clock_job_notifier_rx.recv().unwrap();
+        loop {
+            clock_job_notifier_rx.recv().unwrap();
 
-        let mut uart_handle = uart_proxy_clock.try_lock().unwrap();
-        let localtime = Local::now();
-        uart_handle.write(format!("T{}\r\n", localtime.format("%H%M")).as_bytes()).unwrap();
+            let mut uart_handle = uart_proxy_clock.try_lock().unwrap();
+            let localtime = Local::now();
+            uart_handle.write(format!("T{}\r\n", localtime.format("%H%M")).as_bytes()).unwrap();
+        }
     });
 
     // blink colon
     let uart_proxy_blink_colon = uart.clone();
     thread::spawn(move || {
-        colon_blink_job_notifier_rx.recv().unwrap();
+        loop {
+            colon_blink_job_notifier_rx.recv().unwrap();
 
-        let mut uart_handle = uart_proxy_blink_colon.try_lock().unwrap();
-        uart_handle.write("A\r\n".as_bytes()).unwrap();
-        thread::sleep(Duration::from_millis(500));
-        uart_handle.write("D\r\n".as_bytes()).unwrap();
+            let mut uart_handle = uart_proxy_blink_colon.try_lock().unwrap();
+            uart_handle.write("A\r\n".as_bytes()).unwrap();
+            thread::sleep(Duration::from_millis(500));
+            uart_handle.write("D\r\n".as_bytes()).unwrap();
+        }
     });
 
     // display
     let state_proxy_display = state.clone();
     thread::spawn(move || {
-        display_job_notifier_rx.recv().unwrap();
+        loop {
+            display_job_notifier_rx.recv().unwrap();
 
-        let localtime = Local::now();
-        let state = state_proxy_display.try_lock().unwrap();
-        display.clear();
-        Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 96))
-            .into_styled(TextStyle::new(Font24x32, BinaryColor::On))
-            .draw(&mut display)
-            .unwrap();
-        Text::new(format!("Temp: {:.2} C", state.ambient_temperature).as_str(), Point::zero())
-            .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
-            .draw(&mut display)
-            .unwrap();
-        display.flush().unwrap();
+            let localtime = Local::now();
+            let state = state_proxy_display.try_lock().unwrap();
+            display.clear();
+            Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 96))
+                .into_styled(TextStyle::new(Font24x32, BinaryColor::On))
+                .draw(&mut display)
+                .unwrap();
+            Text::new(format!("Temp: {:.2} C", state.ambient_temperature).as_str(), Point::zero())
+                .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                .draw(&mut display)
+                .unwrap();
+            display.flush().unwrap();
+        }
     });
 
     // sensor
     let state_proxy_sensor = state.clone();
     thread::spawn(move || {
-        sensor_job_notifier_rx.recv().unwrap();
+        loop {
+            sensor_job_notifier_rx.recv().unwrap();
 
-        let bme280_res = bme280.measure().unwrap();
-        let mut state = state_proxy_sensor.try_lock().unwrap();
-        state.ambient_temperature = bme280_res.temperature;
+            let bme280_res = bme280.measure().unwrap();
+            let mut state = state_proxy_sensor.try_lock().unwrap();
+            state.ambient_temperature = bme280_res.temperature;
+        }
     });
 
     // Assign periodic tasks
