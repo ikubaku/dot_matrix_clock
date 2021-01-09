@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::mem;
 use std::thread;
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
@@ -66,9 +67,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         loop {
             clock_job_notifier_rx.recv().unwrap();
 
-            let mut uart_handle = uart_proxy_clock.try_lock().unwrap();
+            let mut uart_handle = uart_proxy_clock.lock().unwrap();
             let localtime = Local::now();
             uart_handle.write(format!("T{}\r\n", localtime.format("%H%M")).as_bytes()).unwrap();
+            mem::drop(uart_handle);
         }
     });
 
@@ -78,10 +80,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         loop {
             colon_blink_job_notifier_rx.recv().unwrap();
 
-            let mut uart_handle = uart_proxy_blink_colon.try_lock().unwrap();
+            let mut uart_handle = uart_proxy_blink_colon.lock().unwrap();
             uart_handle.write("A\r\n".as_bytes()).unwrap();
             thread::sleep(Duration::from_millis(500));
             uart_handle.write("D\r\n".as_bytes()).unwrap();
+            mem::drop(uart_handle);
         }
     });
 
@@ -92,7 +95,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             display_job_notifier_rx.recv().unwrap();
 
             let localtime = Local::now();
-            let state = state_proxy_display.try_lock().unwrap();
+            let state = state_proxy_display.lock().unwrap();
             display.clear();
             Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 96))
                 .into_styled(TextStyle::new(Font24x32, BinaryColor::On))
@@ -103,6 +106,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .draw(&mut display)
                 .unwrap();
             display.flush().unwrap();
+            mem::drop(state);
         }
     });
 
@@ -113,8 +117,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             sensor_job_notifier_rx.recv().unwrap();
 
             let bme280_res = bme280.measure().unwrap();
-            let mut state = state_proxy_sensor.try_lock().unwrap();
+            let mut state = state_proxy_sensor.lock().unwrap();
             state.ambient_temperature = bme280_res.temperature;
+            mem::drop(state);
         }
     });
 
