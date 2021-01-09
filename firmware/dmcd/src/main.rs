@@ -10,6 +10,19 @@ use clokwerk::Interval::*;
 
 const TICK_MS: u32 = 10;
 
+fn create_test_job(uart: Arc<Mutex<Uart>>) -> Box<dyn FnMut() + Send> {
+    let mut counter: u32 = 0;
+
+    Box::new(move || {
+        let mut uart_handle = uart.try_lock().unwrap();
+        uart_handle.write(format!("T{:04}\r\n", counter).as_bytes()).unwrap();
+        counter += 1;
+        if counter > 9999 {
+            counter = 0;
+        }
+    })
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     // Initialize hardware access
     let uart = Uart::new(115200, Parity::None, 8, 1)?;
@@ -19,6 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut scheduler = Scheduler::new();
 
     // Assign periodic tasks
+    scheduler.every(1.second()).run(create_test_job(uart.clone()));
 
     // Do the main loop
     let uart = uart.clone();
