@@ -23,6 +23,15 @@ fn create_test_job(uart: Arc<Mutex<Uart>>) -> Box<dyn FnMut() + Send> {
     })
 }
 
+fn create_colon_blink_job(uart: Arc<Mutex<Uart>>) -> Box<dyn FnMut() + Send> {
+    Box::new(move || {
+        let mut uart_handle = uart.try_lock().unwrap();
+        uart_handle.write("A\r\n".as_bytes()).unwrap();
+        thread::sleep(Duration::from_millis(500));
+        uart_handle.write("D\r\n".as_bytes()).unwrap();
+    })
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     // Initialize hardware access
     let uart = Uart::new(115200, Parity::None, 8, 1)?;
@@ -33,25 +42,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Assign periodic tasks
     scheduler.every(1.second()).run(create_test_job(uart.clone()));
+    scheduler.every(1.second()).run(create_colon_blink_job(uart.clone()));
 
     // Do the main loop
-    let uart = uart.clone();
-    let mut cnt_millis = 0;
-    let mut is_colon_on = false;
     loop {
         scheduler.run_pending();
-        cnt_millis += TICK_MS;
-        if cnt_millis > 500 {
-            // Toggle colon
-            let mut uart_handle = uart.try_lock().unwrap();
-            is_colon_on = !is_colon_on;
-            if is_colon_on {
-                uart_handle.write("A\r\n".as_bytes())?;
-            } else {
-                uart_handle.write("D\r\n".as_bytes())?;
-            }
-            cnt_millis = 0;
-        }
         thread::sleep(Duration::from_millis(TICK_MS as u64));
     }
 }
