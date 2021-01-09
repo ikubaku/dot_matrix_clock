@@ -32,6 +32,8 @@ const TICK_MS: u32 = 10;
 #[derive(Default)]
 struct DMCState {
     ambient_temperature: f32,
+    ambient_humidity: f32,
+    pressure: f32,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -104,6 +106,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
                     .draw(&mut display)
                     .unwrap();
+                Text::new(format!("{:.1} %", state.ambient_humidity).as_str(), Point::new(0, 8))
+                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                    .draw(&mut display)
+                    .unwrap();
+                Text::new(format!("{:.1} hPa", state.pressure / 100.0).as_str(), Point::new(0, 16))
+                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                    .draw(&mut display)
+                    .unwrap();
                 display.flush().unwrap();
             }
         }
@@ -118,6 +128,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let bme280_res = bme280.measure().unwrap();
                 let mut state = state_proxy_sensor.lock().unwrap();
                 state.ambient_temperature = bme280_res.temperature;
+                state.ambient_humidity = bme280_res.humidity;
+                state.pressure = bme280_res.pressure;
             }
         }
     });
