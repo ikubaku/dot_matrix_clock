@@ -20,6 +20,7 @@ use embedded_graphics::style::TextStyle;
 
 use sh1106::prelude::*;
 use sh1106::Builder;
+use sh1106::displayrotation::DisplayRotation::Rotate90;
 
 const TICK_MS: u32 = 10;
 
@@ -44,7 +45,7 @@ fn create_display_job<I2C>(i2c: &BusManagerStd<I2C>) -> Box<dyn FnMut() + Send +
     where I2C: embedded_hal::blocking::i2c::Write + Send,
           <I2C as embedded_hal::blocking::i2c::Write>::Error : std::fmt::Debug,
 {
-    let mut display: GraphicsMode<_> = Builder::new().connect_i2c(i2c.acquire_i2c()).into();
+    let mut display: GraphicsMode<_> = Builder::new().with_rotation(Rotate90).connect_i2c(i2c.acquire_i2c()).into();
     display.init().unwrap();
     display.flush().unwrap();
 
