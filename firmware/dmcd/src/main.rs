@@ -50,6 +50,7 @@ fn create_display_job<I2C>(i2c: &BusManagerStd<I2C>) -> Box<dyn FnMut() + Send +
 
     Box::new(move || {
         let localtime = Local::now();
+        display.clear();
         Text::new(localtime.format("%S").to_string().as_str(), Point::zero())
             .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
             .draw(&mut display)
