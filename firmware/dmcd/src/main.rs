@@ -163,7 +163,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
 
     // Assign periodic tasks
-    scheduler.every(5.minute()).run(move || sensor_job_notifier_tx.send(()).unwrap());
+    scheduler.every(1.minute()).run(move || sensor_job_notifier_tx.send(()).unwrap());
     scheduler.every(1.minute()).run(move || clock_job_notifier_tx.send(()).unwrap());
     scheduler.every(1.second()).run(move || display_job_notifier_tx.send(()).unwrap());
     scheduler.every(1.second()).run(move || colon_blink_job_notifier_tx.send(()).unwrap());
