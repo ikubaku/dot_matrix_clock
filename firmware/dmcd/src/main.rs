@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let ccs811 = Ccs811::new(software_i2c, SlaveAddr::Alternative(true), ccs811_nwake, Delay);
     let mut ccs811 = ccs811.start_application().ok().unwrap();
     thread::sleep(Duration::from_millis(10));
-    ccs811.set_mode(MeasurementMode::ConstantPower1s).unwrap();
+    ccs811.set_mode(MeasurementMode::LowPowerPulseHeating60s).unwrap();
 
     // Initialize other states
     let state = DMCState::default();
