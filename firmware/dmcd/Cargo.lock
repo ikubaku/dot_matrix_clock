@@ -81,6 +81,7 @@ dependencies = [
  "embedded-graphics",
  "embedded-hal",
  "linux-embedded-hal",
+ "nb 1.0.0",
  "rppal",
  "sh1106",
  "shared-bus",
