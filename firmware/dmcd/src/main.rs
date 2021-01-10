@@ -48,6 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let uart = Arc::new(Mutex::new(uart));
     let i2c = I2c::new()?;
     let i2c: &'static _ = shared_bus::new_std!(I2c = i2c).unwrap();
+    let software_i2c = linux_embedded_hal::I2cdev::new("/dev/i2c-2")?;
     let gpio = Gpio::new()?;
     let mut display: GraphicsMode<_> = Builder::new().with_rotation(Rotate90).connect_i2c(i2c.acquire_i2c()).into();
     display.init().unwrap();
@@ -55,8 +56,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut bme280 = BME280::new_primary(i2c.acquire_i2c(), Delay);
     bme280.init().unwrap();
     let ccs811_nwake = gpio.get(4)?.into_output();
-    let ccs811 = Ccs811::new(i2c.acquire_i2c(), SlaveAddr::Alternative(true), ccs811_nwake, Delay);
+    let ccs811 = Ccs811::new(software_i2c, SlaveAddr::Alternative(true), ccs811_nwake, Delay);
     let mut ccs811 = ccs811.start_application().ok().unwrap();
+    thread::sleep(Duration::from_millis(10));
     ccs811.set_mode(MeasurementMode::ConstantPower1s).unwrap();
 
     // Initialize other states
