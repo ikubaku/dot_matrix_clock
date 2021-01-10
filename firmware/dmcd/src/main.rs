@@ -15,6 +15,8 @@ use clokwerk::Interval::*;
 
 use chrono::prelude::*;
 
+use nb::block;
+
 use shared_bus::BusManagerStd;
 
 use embedded_graphics::prelude::*;
@@ -153,7 +155,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 state.pressure = bme280_res.pressure;
             }
             ccs811.set_environment(bme280_res.humidity, bme280_res.temperature).unwrap();
-            let ccs811_res = ccs811.data().unwrap();
+            let ccs811_res = block!(ccs811.data()).unwrap();
             {
                 let mut state = state_proxy_sensor.lock().unwrap();
                 state.e_co2 = ccs811_res.eco2;
