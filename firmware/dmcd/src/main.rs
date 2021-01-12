@@ -154,12 +154,19 @@ fn main() -> Result<(), Box<dyn Error>> {
                 state.ambient_humidity = bme280_res.humidity;
                 state.pressure = bme280_res.pressure;
             }
-            ccs811.set_environment(bme280_res.humidity, bme280_res.temperature).unwrap();
-            let ccs811_res = block!(ccs811.data()).unwrap();
-            {
+            ccs811.set_environment(bme280_res.humidity, bme280_res.temperature)
+                .or_else::<(), _>(|e| {
+                    println!("set_environment failed: {:?}", e);
+                    Ok(())
+                }).unwrap();
+            let ccs811_res = block!(ccs811.data());
+            if ccs811_res.is_ok() {
                 let mut state = state_proxy_sensor.lock().unwrap();
+                let ccs811_res = ccs811_res.ok().unwrap();
                 state.e_co2 = ccs811_res.eco2;
                 state.e_tvoc = ccs811_res.etvoc;
+            } else {
+                println!("data() failed: {:?}", ccs811_res.err().unwrap());
             }
         }
     });
