@@ -46,7 +46,7 @@ struct DMCState {
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Initialize hardware access
-    let uart = Uart::new(115200, Parity::None, 8, 1)?;
+    let uart = Uart::with_path("/dev/ttyS0", 115200, Parity::None, 8, 1)?;
     let uart = Arc::new(Mutex::new(uart));
     let i2c = I2c::new()?;
     let i2c: &'static _ = shared_bus::new_std!(I2c = i2c).unwrap();
