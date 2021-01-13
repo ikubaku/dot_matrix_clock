@@ -3,6 +3,7 @@ use std::thread;
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
 
 use rppal::uart::{Parity, Uart};
 use rppal::gpio::Gpio;
@@ -32,6 +33,7 @@ use bme280::BME280;
 
 use embedded_ccs811::{Ccs811, SlaveAddr, MeasurementMode};
 use embedded_ccs811::prelude::*;
+use std::ops::DerefMut;
 
 const TICK_MS: u32 = 10;
 
@@ -42,6 +44,129 @@ struct DMCState {
     pressure: f32,
     e_co2: u16,
     e_tvoc: u16,
+}
+
+fn create_clock_job(job_notifier: Receiver<()>, uart_handle: Arc<Mutex<Uart>>) -> Box<dyn FnMut() + Send> {
+    Box::new(move || {
+        loop {
+            job_notifier.recv().unwrap();
+            {
+                let mut uart = uart_handle.lock().unwrap();
+                let localtime = Local::now();
+                uart.write(format!("T{}\r\n", localtime.format("%H%M")).as_bytes()).unwrap();
+            }
+        }
+    })
+}
+
+fn create_blink_colon_job(job_notifier: Receiver<()>, uart_handle: Arc<Mutex<Uart>>) -> Box<dyn FnMut() + Send> {
+    Box::new(move || {
+        loop {
+            job_notifier.recv().unwrap();
+            {
+                let mut uart = uart_handle.lock().unwrap();
+                uart.write("A\r\n".as_bytes()).unwrap();
+                thread::sleep(Duration::from_millis(500));
+                uart.write("D\r\n".as_bytes()).unwrap();
+            }
+        }
+    })
+}
+
+fn create_display_job<'a, I2C, E>(
+    job_notifier: Receiver<()>,
+    display_handle: Arc<Mutex<GraphicsMode<I2cInterface<I2C>>>>,
+    state_handle: Arc<Mutex<DMCState>>
+) -> Box<dyn FnMut() + Send + 'a>
+where I2C: 'a
+           + embedded_hal::blocking::i2c::Write<Error = E> + Send,
+      E: std::fmt::Debug,
+{
+    Box::new(move || {
+        loop {
+            job_notifier.recv().unwrap();
+            {
+                let localtime = Local::now();
+                let state = state_handle.lock().unwrap();
+                let mut display = display_handle.lock().unwrap();
+                display.clear();
+                Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 96))
+                    .into_styled(TextStyle::new(Font24x32, BinaryColor::On))
+                    .draw(display.deref_mut())
+                    .unwrap();
+                Text::new(format!("{:.1} C", state.ambient_temperature).as_str(), Point::zero())
+                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                    .draw(display.deref_mut())
+                    .unwrap();
+                Text::new(format!("{:.1} %", state.ambient_humidity).as_str(), Point::new(0, 8))
+                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                    .draw(display.deref_mut())
+                    .unwrap();
+                Text::new(format!("{:.1} hPa", state.pressure / 100.0).as_str(), Point::new(0, 16))
+                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                    .draw(display.deref_mut())
+                    .unwrap();
+                Text::new(format!("{} eCO2", state.e_co2).as_str(), Point::new(0, 32))
+                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                    .draw(display.deref_mut())
+                    .unwrap();
+                Text::new(format!("{} eTVOC", state.e_tvoc).as_str(), Point::new(0, 40))
+                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
+                    .draw(display.deref_mut())
+                    .unwrap();
+                display.flush().unwrap();
+            }
+        }
+    })
+}
+
+fn create_sensor_job<'a, I2C, D, E1, CCS811APP, E2>(
+    job_notifier: Receiver<()>,
+    bme280_handle: Arc<Mutex<BME280<I2C, D>>>,
+    ccs811_handle: Arc<Mutex<CCS811APP>>,
+    state_handle: Arc<Mutex<DMCState>>
+) -> Box<dyn FnMut() + Send + 'a>
+where I2C: 'a
+           + embedded_hal::blocking::i2c::Write<Error = E1>
+           + embedded_hal::blocking::i2c::Read<Error = E1>
+           + embedded_hal::blocking::i2c::WriteRead<Error = E1>
+           + Send,
+      D: 'a
+          + embedded_hal::blocking::delay::DelayMs<u8> + Send,
+      CCS811APP: 'a
+                 + embedded_ccs811::Ccs811AppMode<Error = E2> + Send,
+      E1: std::fmt::Debug,
+      E2: std::fmt::Debug,
+{
+    Box::new(move || {
+        loop {
+            job_notifier.recv().unwrap();
+            let bme280_res;
+            {
+                let mut bme280 = bme280_handle.lock().unwrap();
+                bme280_res = bme280.measure().unwrap();
+                let mut state = state_handle.lock().unwrap();
+                state.ambient_temperature = bme280_res.temperature;
+                state.ambient_humidity = bme280_res.humidity;
+                state.pressure = bme280_res.pressure;
+            }
+            let mut ccs811 = ccs811_handle.lock().unwrap();
+            ccs811.set_environment(bme280_res.humidity, bme280_res.temperature)
+                .or_else::<(), _>(|e| {
+                    println!("set_environment failed: {:?}", e);
+                    Ok(())
+                }).unwrap();
+            let ccs811_res = block!(ccs811.data());
+            if ccs811_res.is_ok() {
+                let mut state = state_handle.lock().unwrap();
+                let ccs811_res = ccs811_res.ok().unwrap();
+                state.e_co2 = ccs811_res.eco2;
+                state.e_tvoc = ccs811_res.etvoc;
+            } else {
+                println!("data() failed: {:?}", ccs811_res.err().unwrap());
+            }
+        }
+    })
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -55,13 +180,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut display: GraphicsMode<_> = Builder::new().with_rotation(Rotate90).connect_i2c(i2c.acquire_i2c()).into();
     display.init().unwrap();
     display.flush().unwrap();
+    let display_handle = Arc::new(Mutex::new(display));
     let mut bme280 = BME280::new_primary(i2c.acquire_i2c(), Delay);
     bme280.init().unwrap();
+    let bme280_handle = Arc::new(Mutex::new(bme280));
     let ccs811_nwake = gpio.get(4)?.into_output();
     let ccs811 = Ccs811::new(software_i2c, SlaveAddr::Alternative(true), ccs811_nwake, Delay);
     let mut ccs811 = ccs811.start_application().ok().unwrap();
     thread::sleep(Duration::from_millis(10));
     ccs811.set_mode(MeasurementMode::LowPowerPulseHeating60s).unwrap();
+    let ccs811_handle = Arc::new(Mutex::new(ccs811));
 
     // Initialize other states
     let state = DMCState::default();
@@ -77,99 +205,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (sensor_job_notifier_tx, sensor_job_notifier_rx) = mpsc::channel();
 
     // Create jobs
-    // clock
-    let uart_proxy_clock = uart.clone();
-    thread::spawn(move || {
-        loop {
-            clock_job_notifier_rx.recv().unwrap();
-            {
-                let mut uart_handle = uart_proxy_clock.lock().unwrap();
-                let localtime = Local::now();
-                uart_handle.write(format!("T{}\r\n", localtime.format("%H%M")).as_bytes()).unwrap();
-            }
-        }
-    });
-
-    // blink colon
-    let uart_proxy_blink_colon = uart.clone();
-    thread::spawn(move || {
-        loop {
-            colon_blink_job_notifier_rx.recv().unwrap();
-            {
-                let mut uart_handle = uart_proxy_blink_colon.lock().unwrap();
-                uart_handle.write("A\r\n".as_bytes()).unwrap();
-                thread::sleep(Duration::from_millis(500));
-                uart_handle.write("D\r\n".as_bytes()).unwrap();
-            }
-        }
-    });
-
-    // display
-    let state_proxy_display = state.clone();
-    thread::spawn(move || {
-        loop {
-            display_job_notifier_rx.recv().unwrap();
-            {
-                let localtime = Local::now();
-                let state = state_proxy_display.lock().unwrap();
-                display.clear();
-                Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 96))
-                    .into_styled(TextStyle::new(Font24x32, BinaryColor::On))
-                    .draw(&mut display)
-                    .unwrap();
-                Text::new(format!("{:.1} C", state.ambient_temperature).as_str(), Point::zero())
-                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
-                    .draw(&mut display)
-                    .unwrap();
-                Text::new(format!("{:.1} %", state.ambient_humidity).as_str(), Point::new(0, 8))
-                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
-                    .draw(&mut display)
-                    .unwrap();
-                Text::new(format!("{:.1} hPa", state.pressure / 100.0).as_str(), Point::new(0, 16))
-                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
-                    .draw(&mut display)
-                    .unwrap();
-                Text::new(format!("{} eCO2", state.e_co2).as_str(), Point::new(0, 32))
-                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
-                    .draw(&mut display)
-                    .unwrap();
-                Text::new(format!("{} eTVOC", state.e_tvoc).as_str(), Point::new(0, 40))
-                    .into_styled(TextStyle::new(Font6x8, BinaryColor::On))
-                    .draw(&mut display)
-                    .unwrap();
-                display.flush().unwrap();
-            }
-        }
-    });
-
-    // sensor
-    let state_proxy_sensor = state.clone();
-    thread::spawn(move || {
-        loop {
-            sensor_job_notifier_rx.recv().unwrap();
-            let bme280_res = bme280.measure().unwrap();
-            {
-                let mut state = state_proxy_sensor.lock().unwrap();
-                state.ambient_temperature = bme280_res.temperature;
-                state.ambient_humidity = bme280_res.humidity;
-                state.pressure = bme280_res.pressure;
-            }
-            ccs811.set_environment(bme280_res.humidity, bme280_res.temperature)
-                .or_else::<(), _>(|e| {
-                    println!("set_environment failed: {:?}", e);
-                    Ok(())
-                }).unwrap();
-            let ccs811_res = block!(ccs811.data());
-            if ccs811_res.is_ok() {
-                let mut state = state_proxy_sensor.lock().unwrap();
-                let ccs811_res = ccs811_res.ok().unwrap();
-                state.e_co2 = ccs811_res.eco2;
-                state.e_tvoc = ccs811_res.etvoc;
-            } else {
-                println!("data() failed: {:?}", ccs811_res.err().unwrap());
-            }
-        }
-    });
+    thread::spawn(create_clock_job(clock_job_notifier_rx, uart.clone()));
+    thread::spawn(create_blink_colon_job(colon_blink_job_notifier_rx, uart.clone()));
+    thread::spawn(create_display_job(display_job_notifier_rx, display_handle.clone(), state.clone()));
+    thread::spawn(create_sensor_job(
+        sensor_job_notifier_rx,
+        bme280_handle.clone(),
+        ccs811_handle.clone(),
+        state.clone()
+    ));
 
     // Assign periodic tasks
     scheduler.every(1.minute()).run(move || sensor_job_notifier_tx.send(()).unwrap());
