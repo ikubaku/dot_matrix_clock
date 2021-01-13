@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::ops::DerefMut;
 use std::thread;
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
@@ -12,13 +13,10 @@ use rppal::i2c::I2c;
 use linux_embedded_hal::Delay;
 
 use clokwerk::{Scheduler, TimeUnits};
-use clokwerk::Interval::*;
 
 use chrono::prelude::*;
 
 use nb::block;
-
-use shared_bus::BusManagerStd;
 
 use embedded_graphics::prelude::*;
 use embedded_graphics::fonts::{Font6x8, Font24x32, Text};
@@ -33,7 +31,6 @@ use bme280::BME280;
 
 use embedded_ccs811::{Ccs811, SlaveAddr, MeasurementMode};
 use embedded_ccs811::prelude::*;
-use std::ops::DerefMut;
 
 const TICK_MS: u32 = 10;
 
@@ -171,19 +168,30 @@ where I2C: 'a
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Initialize hardware access
+    // UART
     let uart = Uart::with_path("/dev/ttyS0", 115200, Parity::None, 8, 1)?;
-    let uart = Arc::new(Mutex::new(uart));
+    let uart_handle = Arc::new(Mutex::new(uart));
+
+    // I2C and software I2C(i2c-gpio)
     let i2c = I2c::new()?;
     let i2c: &'static _ = shared_bus::new_std!(I2c = i2c).unwrap();
     let software_i2c = linux_embedded_hal::I2cdev::new("/dev/i2c-2")?;
+
+    // GPIO
     let gpio = Gpio::new()?;
+
+    // SH1106 OLED display
     let mut display: GraphicsMode<_> = Builder::new().with_rotation(Rotate90).connect_i2c(i2c.acquire_i2c()).into();
     display.init().unwrap();
     display.flush().unwrap();
     let display_handle = Arc::new(Mutex::new(display));
+
+    // BME280
     let mut bme280 = BME280::new_primary(i2c.acquire_i2c(), Delay);
     bme280.init().unwrap();
     let bme280_handle = Arc::new(Mutex::new(bme280));
+
+    // CCS811
     let ccs811_nwake = gpio.get(4)?.into_output();
     let ccs811 = Ccs811::new(software_i2c, SlaveAddr::Alternative(true), ccs811_nwake, Delay);
     let mut ccs811 = ccs811.start_application().ok().unwrap();
@@ -191,9 +199,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     ccs811.set_mode(MeasurementMode::LowPowerPulseHeating60s).unwrap();
     let ccs811_handle = Arc::new(Mutex::new(ccs811));
 
+
     // Initialize other states
     let state = DMCState::default();
-    let state = Arc::new(Mutex::new(state));
+    let state_handle = Arc::new(Mutex::new(state));
 
     // Initialize scheduler
     let mut scheduler = Scheduler::new();
@@ -205,17 +214,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (sensor_job_notifier_tx, sensor_job_notifier_rx) = mpsc::channel();
 
     // Create jobs
-    thread::spawn(create_clock_job(clock_job_notifier_rx, uart.clone()));
-    thread::spawn(create_blink_colon_job(colon_blink_job_notifier_rx, uart.clone()));
-    thread::spawn(create_display_job(display_job_notifier_rx, display_handle.clone(), state.clone()));
+    thread::spawn(create_clock_job(clock_job_notifier_rx, uart_handle.clone()));
+    thread::spawn(create_blink_colon_job(colon_blink_job_notifier_rx, uart_handle.clone()));
+    thread::spawn(create_display_job(display_job_notifier_rx, display_handle.clone(), state_handle.clone()));
     thread::spawn(create_sensor_job(
         sensor_job_notifier_rx,
         bme280_handle.clone(),
         ccs811_handle.clone(),
-        state.clone()
+        state_handle.clone()
     ));
 
-    // Assign periodic tasks
+    // Schedule jobs
     scheduler.every(1.minute()).run(move || sensor_job_notifier_tx.send(()).unwrap());
     scheduler.every(1.minute()).run(move || clock_job_notifier_tx.send(()).unwrap());
     scheduler.every(1.second()).run(move || display_job_notifier_tx.send(()).unwrap());
