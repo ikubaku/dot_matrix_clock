@@ -138,29 +138,35 @@ where I2C: 'a
     Box::new(move || {
         loop {
             job_notifier.recv().unwrap();
-            let bme280_res;
-            {
+            let bme280_res = {
                 let mut bme280 = bme280_handle.lock().unwrap();
-                bme280_res = bme280.measure().unwrap();
+                bme280.measure()
+            }.unwrap();
+            {
                 let mut state = state_handle.lock().unwrap();
                 state.ambient_temperature = bme280_res.temperature;
                 state.ambient_humidity = bme280_res.humidity;
                 state.pressure = bme280_res.pressure;
             }
-            let mut ccs811 = ccs811_handle.lock().unwrap();
-            ccs811.set_environment(bme280_res.humidity, bme280_res.temperature)
-                .or_else::<(), _>(|e| {
-                    println!("set_environment failed: {:?}", e);
-                    Ok(())
-                }).unwrap();
-            let ccs811_res = block!(ccs811.data());
-            if ccs811_res.is_ok() {
-                let mut state = state_handle.lock().unwrap();
-                let ccs811_res = ccs811_res.ok().unwrap();
-                state.e_co2 = ccs811_res.eco2;
-                state.e_tvoc = ccs811_res.etvoc;
-            } else {
-                println!("data() failed: {:?}", ccs811_res.err().unwrap());
+
+            let ccs811_res = {
+                let mut ccs811 = ccs811_handle.lock().unwrap();
+                ccs811.set_environment(bme280_res.humidity, bme280_res.temperature)
+                    .or_else::<(), _>(|e| {
+                        println!("set_environment failed: {:?}", e);
+                        Ok(())
+                    }).unwrap();
+                block!(ccs811.data())
+            };
+            match ccs811_res {
+                Ok(res) => {
+                    let mut state = state_handle.lock().unwrap();
+                    state.e_co2 = res.eco2;
+                    state.e_tvoc = res.etvoc;
+                },
+                Err(e) => {
+                    println!("data() failed: {:?}", e);
+                },
             }
         }
     })
