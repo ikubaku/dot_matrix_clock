@@ -19,7 +19,7 @@ use chrono::prelude::*;
 use nb::block;
 
 use embedded_graphics::prelude::*;
-use embedded_graphics::fonts::{Font6x8, Font12x16, Font24x32, Text};
+use embedded_graphics::fonts::{Font6x8, Font8x16, Font24x32, Text};
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::style::TextStyle;
 
@@ -87,12 +87,16 @@ where I2C: 'a
                 let state = state_handle.lock().unwrap();
                 let mut display = display_handle.lock().unwrap();
                 display.clear();
-                Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 96))
+                Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 98))
                     .into_styled(TextStyle::new(Font24x32, BinaryColor::On))
                     .draw(display.deref_mut())
                     .unwrap();
-                Text::new(localtime.format("%b %d %a %Y").to_string().as_str(), Point::new(0, 84))
-                    .into_styled(TextStyle::new(Font12x16, BinaryColor::On))
+                Text::new(localtime.format("%b %d").to_string().as_str(), Point::new(0, 67))
+                    .into_styled(TextStyle::new(Font8x16, BinaryColor::On))
+                    .draw(display.deref_mut())
+                    .unwrap();
+                Text::new(localtime.format("%a %Y").to_string().as_str(), Point::new(0, 84))
+                    .into_styled(TextStyle::new(Font8x16, BinaryColor::On))
                     .draw(display.deref_mut())
                     .unwrap();
                 Text::new(format!("{:.1} C", state.ambient_temperature).as_str(), Point::zero())
