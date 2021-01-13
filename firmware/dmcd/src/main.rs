@@ -87,7 +87,7 @@ where I2C: 'a
                 let state = state_handle.lock().unwrap();
                 let mut display = display_handle.lock().unwrap();
                 display.clear();
-                Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 98))
+                Text::new(localtime.format("%S").to_string().as_str(), Point::new(0, 100))
                     .into_styled(TextStyle::new(Font24x32, BinaryColor::On))
                     .draw(display.deref_mut())
                     .unwrap();
@@ -95,7 +95,7 @@ where I2C: 'a
                     .into_styled(TextStyle::new(Font8x16, BinaryColor::On))
                     .draw(display.deref_mut())
                     .unwrap();
-                Text::new(localtime.format("%a %Y").to_string().as_str(), Point::new(0, 84))
+                Text::new(localtime.format("%a %Y").to_string().as_str(), Point::new(0, 81))
                     .into_styled(TextStyle::new(Font8x16, BinaryColor::On))
                     .draw(display.deref_mut())
                     .unwrap();
