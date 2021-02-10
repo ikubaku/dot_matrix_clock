@@ -43,6 +43,33 @@ struct DMCState {
     e_tvoc: u16,
 }
 
+fn create_neopixel_job(job_notifier: Receiver<()>, uart_handle: Arc<Mutex<Uart>>) -> Box<dyn FnMut() + Send> {
+    Box::new(move || {
+        loop {
+            job_notifier.recv().unwrap();
+            {
+                let mut uart = uart_handle.lock().unwrap();
+                uart.write("N0FFFFFF\r\n".as_bytes()).unwrap();
+                uart.write("N1FFFFFF\r\n".as_bytes()).unwrap();
+                uart.write("N2FFFFFF\r\n".as_bytes()).unwrap();
+                uart.write("N3FFFFFF\r\n".as_bytes()).unwrap();
+                uart.write("N4FFFFFF\r\n".as_bytes()).unwrap();
+                uart.write("L\r\n".as_bytes()).unwrap();
+            }
+            thread::sleep(Duration::from_millis(1000));
+            {
+                let mut uart = uart_handle.lock().unwrap();
+                uart.write("N0400000\r\n".as_bytes()).unwrap();
+                uart.write("N1004000\r\n".as_bytes()).unwrap();
+                uart.write("N2000040\r\n".as_bytes()).unwrap();
+                uart.write("N3202000\r\n".as_bytes()).unwrap();
+                uart.write("N4202020\r\n".as_bytes()).unwrap();
+                uart.write("L\r\n".as_bytes()).unwrap();
+            }
+        }
+    })
+}
+
 fn create_clock_job(job_notifier: Receiver<()>, uart_handle: Arc<Mutex<Uart>>) -> Box<dyn FnMut() + Send> {
     Box::new(move || {
         loop {
@@ -222,12 +249,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut scheduler = Scheduler::new();
 
     // Create notifiers
+    let (neopixel_job_notifier_tx, neopixel_job_notifier_rx) = mpsc::channel();
     let (clock_job_notifier_tx, clock_job_notifier_rx) = mpsc::channel();
     let (colon_blink_job_notifier_tx, colon_blink_job_notifier_rx) = mpsc::channel();
     let (display_job_notifier_tx, display_job_notifier_rx) = mpsc::channel();
     let (sensor_job_notifier_tx, sensor_job_notifier_rx) = mpsc::channel();
 
     // Create jobs
+    thread::spawn(create_neopixel_job(neopixel_job_notifier_rx, uart_handle.clone()));
     thread::spawn(create_clock_job(clock_job_notifier_rx, uart_handle.clone()));
     thread::spawn(create_blink_colon_job(colon_blink_job_notifier_rx, uart_handle.clone()));
     thread::spawn(create_display_job(display_job_notifier_rx, display_handle.clone(), state_handle.clone()));
@@ -239,6 +268,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     ));
 
     // Schedule jobs
+    scheduler.every(1.minute()).run(move || neopixel_job_notifier_tx.send(()).unwrap());
     scheduler.every(1.minute()).run(move || sensor_job_notifier_tx.send(()).unwrap());
     scheduler.every(1.minute()).run(move || clock_job_notifier_tx.send(()).unwrap());
     scheduler.every(1.second()).run(move || display_job_notifier_tx.send(()).unwrap());
