@@ -47,6 +47,7 @@ fn create_neopixel_job(job_notifier: Receiver<()>, uart_handle: Arc<Mutex<Uart>>
     Box::new(move || {
         loop {
             job_notifier.recv().unwrap();
+            thread::sleep(Duration::from_millis(100));
             {
                 let mut uart = uart_handle.lock().unwrap();
                 uart.write("N0FFFFFF\r\n".as_bytes()).unwrap();
